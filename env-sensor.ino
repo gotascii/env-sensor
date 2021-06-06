@@ -50,7 +50,7 @@ float altitude(const int32_t press, const float seaLevel) {  /*!
 }
 
 void setupWifi() {
-	Serial.print("Connecting to '");
+  Serial.print("Connecting to '");
   Serial.print(WIFI_SSID);
   Serial.print("' ...");
 
@@ -85,7 +85,7 @@ void setupBME680() {
   Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));
   // 320°C for 150 milliseconds
   BME680.setGas(320, 150);
-	
+  
 }
 
 void setupCCS811() {
@@ -156,47 +156,47 @@ void setup() {
 }
 
 void sendMetrics() {
-	if (!wifi.connected()) {
+  if (!wifi.connected()) {
     wifi.flush();
-  	wifi.stop();
-		if (!wifi.connect(serverAddress, port)) {
-			Serial.println("Cannot connect to go server! Waiting");
-			delay(1000);
-			return;
-		}
-	}
+    wifi.stop();
+    if (!wifi.connect(serverAddress, port)) {
+      Serial.println("Cannot connect to go server! Waiting");
+      delay(1000);
+      return;
+    }
+  }
 
-	static int32_t  temp, humidity, pressure, gas;  // BME readings
+  static int32_t  temp, humidity, pressure, gas;  // BME readings
   static char     buf[16];                        // sprintf text buffer
   static float    alt;                            // Temporary variable
   static uint16_t loopCounter = 0;                // Display iterations
   static uint16_t ecotwo, tvoc;
   static float humi_f, temp_f;
 
-	sprintf(buf, "%i,", data.pm10_standard);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.pm25_standard);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.pm100_standard);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.pm10_env);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.pm25_env);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.pm100_env);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.particles_03um);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.particles_05um);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.particles_10um);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.particles_25um);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.particles_50um);
-	wifi.print(buf);
-	sprintf(buf, "%i,", data.particles_100um);
-	wifi.print(buf);
+  sprintf(buf, "%i,", data.pm10_standard);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.pm25_standard);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.pm100_standard);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.pm10_env);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.pm25_env);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.pm100_env);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.particles_03um);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.particles_05um);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.particles_10um);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.particles_25um);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.particles_50um);
+  wifi.print(buf);
+  sprintf(buf, "%i,", data.particles_100um);
+  wifi.print(buf);
 
   // First, get the BME data and adjust temp and humi to account for weird shit
   BME680.getSensorData(temp, humidity, pressure, gas);
@@ -204,7 +204,7 @@ void sendMetrics() {
   humidity = humidity + 7000;
 
   // Then put that data into a format that CCS can use
-	sprintf(buf, "%3d.%02d", (int8_t)(humidity / 1000), (uint16_t)(humidity % 1000));
+  sprintf(buf, "%3d.%02d", (int8_t)(humidity / 1000), (uint16_t)(humidity % 1000));
   humi_f = strtod(buf, NULL);
   sprintf(buf, "%3d.%02d", (int8_t)(temp / 100), (uint8_t)(temp % 100));
   temp_f = strtod(buf, NULL);
@@ -213,16 +213,16 @@ void sendMetrics() {
   ccs.setEnvironmentalData(humi_f, temp_f);  
   
   // Then read CCS data
-	if (ccs.available() && !ccs.readData()) {
-		ecotwo = ccs.geteCO2();
-		tvoc = ccs.getTVOC();
-	}
+  if (ccs.available() && !ccs.readData()) {
+    ecotwo = ccs.geteCO2();
+    tvoc = ccs.getTVOC();
+  }
 
   // Write CCS data
-	sprintf(buf, "%i,", tvoc);
-	wifi.print(buf);
-	sprintf(buf, "%i,", ecotwo);
-	wifi.print(buf);
+  sprintf(buf, "%i,", tvoc);
+  wifi.print(buf);
+  sprintf(buf, "%i,", ecotwo);
+  wifi.print(buf);
 
   // Write offset-adjusted BME data
   sprintf(buf, "%d.%02d,", (int8_t)(temp / 100), (uint8_t)(temp % 100));
@@ -243,37 +243,37 @@ void sendMetrics() {
   // sprintf(buf, "%5d.%02d", (int16_t)(alt), ((uint8_t)(alt * 100) % 100));
   // Serial.print(buf);
 
-	wifi.println();
+  wifi.println();
 }
 
 void loop() {
-	// readPMSdata has to run at loop speed, not sure why
-	if(readPMSdata(&pmsSerial) && ((millis() - ts) > 5000)) {
-		ts = millis();
-		Serial.println("Sending");
-		sendMetrics();
-	}
+  // readPMSdata has to run at loop speed, not sure why
+  if(readPMSdata(&pmsSerial) && ((millis() - ts) > 5000)) {
+    ts = millis();
+    Serial.println("Sending");
+    sendMetrics();
+  }
 }
 
 //if (wifi.connect(serverAddress, port)) {
-//	Serial.println("Connected to server");
+//  Serial.println("Connected to server");
 //  wifi.println("GET /m?q=arduino HTTP/1.0");
 //
-//	while(wifi.connected())
-//	{
-//		while(wifi.available() > 0)
-//		{
-//			char c = wifi.read();
-//			Serial.print(c);
+//  while(wifi.connected())
+//  {
+//    while(wifi.available() > 0)
+//    {
+//      char c = wifi.read();
+//      Serial.print(c);
 //    }
-//	}
+//  }
 //
-//	if(!wifi.connected()) {
-//  	// if the server's disconnected, stop the client:
-//  	Serial.println("disconnected");
+//  if(!wifi.connected()) {
+//    // if the server's disconnected, stop the client:
+//    Serial.println("disconnected");
 //    wifi.flush();
-//  	wifi.stop();
-//	}
+//    wifi.stop();
+//  }
 //} else {
 //  Serial.println("connection failed");
 //}

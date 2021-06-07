@@ -92,11 +92,10 @@ func handle(conn net.Conn) {
 	for {
 		select {
 		case metrics := <-text:
-			// TODO: This pipeline is brittle af
 			go send(metrics)
 		case <-timeout.C:
 			conn.Close()
-			log.Println("Timeout!")
+			log.Println("connection timed out")
 			return
 		}
 	}
@@ -108,14 +107,14 @@ func main() {
 		panic(err)
 	}
 	defer listener.Close()
-	log.Printf("Listening for connections on %s", listener.Addr().String())
+	log.Printf("listening for connections on %s", listener.Addr().String())
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("Error accepting connection from client: %s", err)
+			log.Printf("error accepting connection from client: %s", err)
 		} else {
-			log.Println("Connection accepted!")
+			log.Println("connection accepted")
 			go handle(conn)
 		}
 	}

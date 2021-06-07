@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -32,7 +31,6 @@ func post(name, val string) {
 	ts := time.Now().Unix()
 	body := `[{"name": "env.%s", "interval": 1, "time": %d, "value": %s}]`
 	body = fmt.Sprintf(body, name, ts, val)
-	fmt.Println(body)
 
 	client := &http.Client{}
 	b := bytes.NewBuffer([]byte(body))
@@ -46,28 +44,28 @@ func post(name, val string) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	f, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		log.Println(string(f))
+		return
 	}
-
-	log.Println(string(f))
 }
 
-func send(str string) error {
+func send(str string) {
 	split := strings.Split(str, ",")
 	if len(split) != len(names) {
-		return errors.New("received malformatted metrics")
+		log.Printf("received malformed metrics: %s\n", str)
+		return
 	}
-	fmt.Println("rangin names")
 	for i, name := range names {
-		fmt.Println("postin")
 		go post(name, split[i])
 	}
-	return nil
+	log.Println(str)
 }
 
 func handle(conn net.Conn) {
@@ -98,7 +96,7 @@ func handle(conn net.Conn) {
 			go send(metrics)
 		case <-timeout.C:
 			conn.Close()
-			fmt.Println("Timeout!")
+			log.Println("Timeout!")
 			return
 		}
 	}
@@ -113,7 +111,6 @@ func main() {
 	log.Printf("Listening for connections on %s", listener.Addr().String())
 
 	for {
-		fmt.Println("looping")
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Printf("Error accepting connection from client: %s", err)

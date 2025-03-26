@@ -1,0 +1,76 @@
+---
+description: auto commit
+globs: "*"
+alwaysApply: false
+---
+# Auto Commit Workflow
+
+This rule implements a workflow where the AI provides a runnable commit command after completing approved code changes.
+
+<rule>
+name: auto_commit_workflow
+description: After completing an approved code change, AI provides a runnable commit command
+
+filters:
+  # Match when code changes have been completed
+  - type: conversation_history
+    pattern: "(?i)(changes (have been|were) (successfully|completed|applied|implemented)|code has been updated|changes applied successfully)"
+
+actions:
+  - type: context
+    message: |
+      # Auto Commit Workflow
+      
+      Now that code changes have been completed, follow this workflow:
+      
+      IMPORTANT: DO NOT generate a proposal or ask for approval of the commit message.
+      Simply generate the commit command and provide it in a runnable block.
+      
+      1. Generate a well-structured git commit message that:
+         - Has a clear, succinct title (first line) that summarizes the change in plain language
+         - NEVER use prefixes like "feat:", "fix:", "refactor:" etc.
+         - Includes bullet points detailing specific changes
+         - Explains the why behind the changes
+         - Keeps language simple and direct
+         - Mentions any related issues or tickets if applicable
+      
+      2. Provide a runnable code block with proper commit formatting that the user can execute:
+      
+      ```bash
+      git add [relevant files] && git commit -m "Add user authentication system
+
+- Add login/logout functionality
+- Store session information securely
+- Create protected routes
+
+This implements the core authentication flow needed for user accounts."
+      ```
+      
+      3. Confirm to the user that they can run the command by clicking the "Run" button on the code block
+      
+      DO NOT:
+      - Generate a [PROPOSAL] block
+      - Ask for approval of the commit message
+      - Wait for confirmation before providing the command
+
+examples:
+  - input: |
+      AI: "I've successfully updated the code based on your approved changes."
+      User: "Great, let's commit it"
+      AI: *provides runnable bash code block with properly formatted commit command*
+    output: "User can execute the commit with proper formatting"
+
+  - input: |
+      # Bad - DO NOT DO THIS:
+      AI: "[PROPOSAL] I suggest the following commit message..."
+      User: "Approved"
+      AI: *provides command*
+      
+      # Good - DO THIS:
+      AI: "Here's the command to commit these changes:"
+      AI: *provides runnable bash code block immediately*
+
+metadata:
+  priority: medium
+  version: 1.2
+</rule>

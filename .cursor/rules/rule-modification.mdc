@@ -1,0 +1,57 @@
+---
+description: modifying rules
+globs: "*.mdc"
+alwaysApply: false
+---
+# Rules Edit Protection
+
+This rule prevents direct editing of rule files and instead recommends generating the full content for copy/paste.
+
+<rule>
+name: rules_edit_protection
+description: Prevents direct editing of rule files and recommends generating full content for copy/paste
+
+filters:
+  # Match any attempts to edit .mdc files in the .cursor/rules directory
+  - type: file_path
+    pattern: "\\.cursor/rules/.*\\.mdc$"
+  # Match edit operations
+  - type: intent
+    pattern: "edit|modify|update|change"
+
+actions:
+  - type: block
+    message: |
+      Direct editing of rule files through Cursor's tools is not recommended as it may cause issues.
+      
+      Instead, please follow this process:
+      
+      1. Ask me to generate the complete updated content of the rule file
+      2. I will provide the entire file content in a code block
+      3. You can copy this content and paste it into the file manually
+      
+      This approach ensures proper formatting and prevents potential errors that can occur when editing rule files directly.
+
+  - type: suggest
+    message: |
+      I notice you want to modify a rule file. Would you like me to:
+      
+      1. Generate the complete updated content for you to copy/paste
+      2. Explain the changes I recommend making
+      
+      This approach is more reliable than direct editing for rule files.
+
+examples:
+  - input: |
+      User: "Can you update the auto-commit-workflow rule?"
+      
+      # What should happen:
+      AI: "I notice you want to modify a rule file. Let me generate the complete updated content for you to copy/paste."
+      AI: *provides complete updated file content in a code block*
+      User: *manually applies changes*
+    output: "Rule file is updated correctly without direct editing"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>

@@ -1,0 +1,89 @@
+---
+description: Enforce strict confirmation before modifying existing code
+globs: "*"
+---
+# Code Modification Safety Rule
+
+This rule ensures that modifications to existing code files require explicit confirmation before any changes are proposed.
+
+<rule>
+name: code_modification_safety
+description: Requires explicit approval before any code modifications are made
+
+filters:
+  # Match file modification events
+  - type: event
+    pattern: "file_modify"
+  # Exclude new files
+  - type: file_age
+    pattern: ">0"  # Only match files older than 0 seconds (existing files)
+  # Require proposal in conversation history
+  - type: conversation_history
+    pattern: "\\[PROPOSAL\\].*Do you approve these changes\\?"
+  # Require user confirmation
+  - type: user_message
+    pattern: "^(yes|approved|proceed)$"
+
+actions:
+  - type: block
+    message: |
+      Direct code modifications are not allowed.
+      
+      Please follow this strict process:
+      1. Format your proposal using this template:
+      
+      [PROPOSAL]
+      Changes to be made:
+      1. File: <filename>
+         - Specific change details
+      2. File: <filename>
+         - Specific change details
+      
+      Reason for changes: <explanation>
+      
+      Do you approve these changes?
+      
+      2. Wait for explicit user approval ("yes", "approved", or "proceed")
+      3. Only proceed with changes after receiving approval
+      
+      Your last proposal must be followed by user approval before any changes can be made.
+
+  - type: suggest
+    message: |
+      Best practices for proposing code modifications:
+      
+      1. Use the [PROPOSAL] template format
+      2. List each file and specific changes clearly
+      3. Explain the reasoning and impact
+      4. Wait for explicit approval
+      5. Make changes exactly as proposed
+      6. Allow user to review the changes
+
+examples:
+  - input: |
+      # Bad: Making changes without proposal and approval
+      AI: *makes direct changes*
+      
+      # Bad: Informal proposal
+      AI: "Should I change this function?"
+      User: "ok"
+      
+      # Good: Proper proposal and approval
+      AI: |
+        [PROPOSAL]
+        Changes to be made:
+        1. File: main.go
+           - Add debug flag parameter
+           - Update function signature
+        
+        Reason for changes: Enable optional debug output
+        
+        Do you approve these changes?
+      User: "yes"
+      AI: *makes changes as proposed*
+    output: "Changes must follow proposal template and receive explicit approval"
+
+metadata:
+  priority: high
+  version: 2.0
+</rule>

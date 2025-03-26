@@ -1,74 +1,24 @@
-// The idea is that CCS uses the humi and temp data from the BME680
-// But both have hot plates so I have no idea why ^
-
 #include <WiFi.h>
-#include "Zanshin_BME680.h"
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <WiFiClientSecure.h>
+#include <Wire.h>
+#include "Zanshin_BME680.h"  // Same library as before
 #include "Adafruit_CCS811.h"
-#include <SoftwareSerial.h>
-SoftwareSerial pmsSerial(2, 3);
+#include "config.h"  // Include configuration header
 
-#define WIFI_SSID "The Black Lodge"
-#define WIFI_PASSWORD ""
+// Home Assistant configuration
+const char* HA_URL_BASE = HA_URL;
+const char* HA_TOKEN = HA_TOKEN_STR;
+const int STAT_LED = 2;  // Blue LED on the board
 
-unsigned long ts = 0;
-
-char serverAddress[] = "10.0.1.93";
-int port = 8080;
-
-WiFiClient wifi;
-
-const uint32_t SERIAL_SPEED{115200};
-
-Adafruit_CCS811 ccs;
-
+// Initialize sensors
 BME680_Class BME680;
-
-struct pms5003data {
-  uint16_t framelen;
-  uint16_t pm10_standard, pm25_standard, pm100_standard;
-  uint16_t pm10_env, pm25_env, pm100_env;
-  uint16_t particles_03um, particles_05um, particles_10um, particles_25um, particles_50um, particles_100um;
-  uint16_t unused;
-  uint16_t checksum;
-};
-struct pms5003data data;
-
-float altitude(const int32_t press, const float seaLevel = 1013.25);
-float altitude(const int32_t press, const float seaLevel) {  /*!
-  @brief     This converts a pressure measurement into a height in meters
-  @details   The corrected sea-level pressure can be passed into the function if it is known,
-             otherwise the standard atmospheric pressure of 1013.25hPa is used (see
-             https://en.wikipedia.org/wiki/Atmospheric_pressure) for details.
-  @param[in] press    Pressure reading from BME680
-  @param[in] seaLevel Sea-Level pressure in millibars
-  @return    floating point altitude in meters.
-  */
-  static float Altitude;
-  // Convert into meters
-  Altitude = 44330.0 * (1.0 - pow(((float)press / 100.0) / seaLevel, 0.1903));
-  return (Altitude);
-}
-
-void setupWifi() {
-  Serial.print("Connecting to '");
-  Serial.print(WIFI_SSID);
-  Serial.print("' ...");
-
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("connected");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
-}
+Adafruit_CCS811 ccs;
 
 void setupBME680() {
   Serial.print(F("- Initializing BME680 sensor\n"));
-  while (!BME680.begin(I2C_STANDARD_MODE)) {
+  while (!BME680.begin(I2C_STANDARD_MODE)) {  // Start BME680 using I2C, use first device found
     Serial.print(F("-  Unable to find BME680. Trying again in 5 seconds.\n"));
     delay(5000);
   }
@@ -81,11 +31,8 @@ void setupBME680() {
   Serial.print(F("- Setting IIR filter to a value of 4 samples\n"));
   BME680.setIIRFilter(IIR4);
 
-  // "°C" symbols
-  Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));
-  // 320°C for 150 milliseconds
-  BME680.setGas(320, 150);
-  
+  Serial.print(F("- Setting gas measurement to 320°C for 150ms\n"));
+  BME680.setGas(320, 150);  // 320°C for 150 milliseconds
 }
 
 void setupCCS811() {
@@ -97,183 +44,121 @@ void setupCCS811() {
   while(!ccs.available());
 }
 
-boolean readPMSdata(Stream *s) {
-  if (! s->available()) {
-    return false;
+void sendToHomeAssistant(const char* entityId, float value, const char* unit, const char* device_class = nullptr) {
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
   }
 
-  // Read a byte at a time until we get to the special '0x42' start-byte
-  if (s->peek() != 0x42) {
-    s->read();
-    return false;
+  WiFiClientSecure client;
+  client.setInsecure();  // For initial testing only - we'll add proper cert verification later
+  HTTPClient http;
+  
+  String url = String(HA_URL_BASE) + entityId;
+  http.begin(client, url);
+  
+  // Add headers
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", String("Bearer ") + HA_TOKEN);
+
+  // Create JSON payload
+  StaticJsonDocument<200> doc;
+  doc["state"] = value;
+  doc["attributes"]["unit_of_measurement"] = unit;
+  if (device_class) {
+    doc["attributes"]["device_class"] = device_class;
+  }
+  
+  String jsonString;
+  serializeJson(doc, jsonString);
+
+  // Send POST request
+  int httpResponseCode = http.POST(jsonString);
+  
+  if (httpResponseCode > 0) {
+    digitalWrite(STAT_LED, HIGH);  // Success indication
+    Serial.printf("HTTP Response code: %d for %s\n", httpResponseCode, entityId);
+  } else {
+    digitalWrite(STAT_LED, LOW);   // Error indication
+    Serial.printf("Error code: %d for %s\n", httpResponseCode, entityId);
   }
 
-  // Now read all 32 bytes
-  if (s->available() < 32) {
-    return false;
-  }
-
-  uint8_t buffer[32];    
-  uint16_t sum = 0;
-  s->readBytes(buffer, 32);
-
-  // get checksum ready
-  for (uint8_t i=0; i<30; i++) {
-    sum += buffer[i];
-  }
-
-  /* debugging
-  for (uint8_t i=2; i<32; i++) {
-    Serial.print("0x"); Serial.print(buffer[i], HEX); Serial.print(", ");
-  }
-  Serial.println();
-  */
-
-  // The data comes in endian'd, this solves it so it works on all platforms
-  uint16_t buffer_u16[15];
-  for (uint8_t i=0; i<15; i++) {
-    buffer_u16[i] = buffer[2 + i*2 + 1];
-    buffer_u16[i] += (buffer[2 + i*2] << 8);
-  }
-
-  // put it into a nice struct :)
-  memcpy((void *)&data, (void *)buffer_u16, 30);
-
-  if (sum != data.checksum) {
-    Serial.println("Checksum failure");
-    return false;
-  }
-  // success!
-  return true;
+  http.end();
 }
 
 void setup() {
-  Serial.begin(SERIAL_SPEED);
-  setupWifi();
+  // Initialize serial communication
+  Serial.begin(115200);
+  while(!Serial) delay(10);  // Wait for serial to be ready
+  
+  // Configure status LED
+  pinMode(STAT_LED, OUTPUT);
+  digitalWrite(STAT_LED, LOW);
+  
+  // Initialize I2C with pins verified by continuity testing
+  Wire.begin(15, 5);  // SDA = GPIO15, SCL = GPIO5
+  Wire.setClock(100000);  // Set to standard 100kHz I2C speed
+  
+  // Initialize sensors
   setupBME680();
   setupCCS811();
-  pmsSerial.begin(9600);
-}
-
-void sendMetrics() {
-  if (!wifi.connected()) {
-    wifi.flush();
-    wifi.stop();
-    if (!wifi.connect(serverAddress, port)) {
-      Serial.println("Cannot connect to go server! Waiting");
-      delay(1000);
-      return;
-    }
-  }
-
-  static int32_t  temp, humidity, pressure, gas;  // BME readings
-  static char     buf[16];                        // sprintf text buffer
-  static float    alt;                            // Temporary variable
-  static uint16_t loopCounter = 0;                // Display iterations
-  static uint16_t ecotwo, tvoc;
-  static float humi_f, temp_f;
-
-  sprintf(buf, "%i,", data.pm10_standard);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.pm25_standard);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.pm100_standard);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.pm10_env);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.pm25_env);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.pm100_env);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.particles_03um);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.particles_05um);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.particles_10um);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.particles_25um);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.particles_50um);
-  wifi.print(buf);
-  sprintf(buf, "%i,", data.particles_100um);
-  wifi.print(buf);
-
-  // First, get the BME data and adjust temp and humi to account for weird shit
-  BME680.getSensorData(temp, humidity, pressure, gas);
-  temp = temp - 300;
-  humidity = humidity + 7000;
-
-  // Then put that data into a format that CCS can use
-  sprintf(buf, "%3d.%02d", (int8_t)(humidity / 1000), (uint16_t)(humidity % 1000));
-  humi_f = strtod(buf, NULL);
-  sprintf(buf, "%3d.%02d", (int8_t)(temp / 100), (uint8_t)(temp % 100));
-  temp_f = strtod(buf, NULL);
-
-  // Then feed that data into CCS
-  ccs.setEnvironmentalData(humi_f, temp_f);  
   
-  // Then read CCS data
-  if (ccs.available() && !ccs.readData()) {
-    ecotwo = ccs.geteCO2();
-    tvoc = ccs.getTVOC();
+  // Connect to WiFi
+  Serial.print("Connecting to ");
+  Serial.println(WIFI_SSID);
+  
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  
+  // Flash LED while connecting
+  while (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(STAT_LED, !digitalRead(STAT_LED));
+    delay(500);
+    Serial.print(".");
   }
-
-  // Write CCS data
-  sprintf(buf, "%i,", tvoc);
-  wifi.print(buf);
-  sprintf(buf, "%i,", ecotwo);
-  wifi.print(buf);
-
-  // Write offset-adjusted BME data
-  sprintf(buf, "%d.%02d,", (int8_t)(temp / 100), (uint8_t)(temp % 100));
-  wifi.print(buf);
-
-  sprintf(buf, "%d.%03d,", (int8_t)(humidity / 1000), (uint16_t)(humidity % 1000));
-  wifi.print(buf);
-
-  sprintf(buf, "%d.%02d,", (int16_t)(pressure / 100), (uint8_t)(pressure % 100));
-  wifi.print(buf);
-
-  // Air (resistance in) m(illiohms)
-  sprintf(buf, "%d.%02d", (int16_t)(gas / 100), (uint8_t)(gas % 100));
-  wifi.print(buf);
-
-  // Alt(itude) (m)eters
-  // alt = altitude(pressure);
-  // sprintf(buf, "%5d.%02d", (int16_t)(alt), ((uint8_t)(alt * 100) % 100));
-  // Serial.print(buf);
-
-  wifi.println();
+  
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
 }
 
 void loop() {
-  // readPMSdata has to run at loop speed, not sure why
-  if(readPMSdata(&pmsSerial) && ((millis() - ts) > 5000)) {
-    ts = millis();
-    Serial.println("Sending");
-    sendMetrics();
+  static int32_t temp, humidity, pressure, gas;  // BME readings
+  static char buf[16];  // For formatting floats
+  static float humi_f, temp_f;  // For CCS811 compensation
+  
+  // Get readings from BME680
+  if (BME680.getSensorData(temp, humidity, pressure, gas)) {
+    // Adjust temperature and humidity based on previous calibration
+    temp = temp - 300;      // Subtract 3°C (300 = 3.00°C)
+    humidity = humidity + 7000;  // Add 7% (7000 = 7.000%)
+    
+    // Send BME680 measurements to Home Assistant
+    sendToHomeAssistant("temperature", (float)temp / 100.0, "°C", "temperature");
+    sendToHomeAssistant("humidity", (float)humidity / 1000.0, "%", "humidity");
+    sendToHomeAssistant("pressure", (float)pressure / 100.0, "hPa", "pressure");
+    sendToHomeAssistant("gas", (float)gas / 100.0, "kΩ");
+    
+    // Format temperature and humidity for CCS811
+    sprintf(buf, "%3d.%02d", (int8_t)(humidity / 1000), (uint16_t)(humidity % 1000));
+    humi_f = strtod(buf, NULL);
+    sprintf(buf, "%3d.%02d", (int8_t)(temp / 100), (uint8_t)(temp % 100));
+    temp_f = strtod(buf, NULL);
+    
+    // Set environmental data for CCS811 compensation
+    ccs.setEnvironmentalData(humi_f, temp_f);
   }
-}
-
-//if (wifi.connect(serverAddress, port)) {
-//  Serial.println("Connected to server");
-//  wifi.println("GET /m?q=arduino HTTP/1.0");
-//
-//  while(wifi.connected())
-//  {
-//    while(wifi.available() > 0)
-//    {
-//      char c = wifi.read();
-//      Serial.print(c);
-//    }
-//  }
-//
-//  if(!wifi.connected()) {
-//    // if the server's disconnected, stop the client:
-//    Serial.println("disconnected");
-//    wifi.flush();
-//    wifi.stop();
-//  }
-//} else {
-//  Serial.println("connection failed");
-//}
+  
+  // Read CCS811 data
+  if (ccs.available() && !ccs.readData()) {
+    uint16_t eco2 = ccs.geteCO2();
+    uint16_t tvoc = ccs.getTVOC();
+    
+    // Send CCS811 measurements to Home Assistant
+    sendToHomeAssistant("co2", (float)eco2, "ppm", "carbon_dioxide");
+    sendToHomeAssistant("tvoc", (float)tvoc, "ppb");
+    
+    Serial.printf("CO2: %d ppm, TVOC: %d ppb\n", eco2, tvoc);
+  }
+  
+  delay(5000);  // Wait 5 seconds between readings
+} 

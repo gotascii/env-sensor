@@ -13,7 +13,6 @@ const int PIN_I2C_SCL = 5;        // I2C SCL pin
 
 // Timing Constants
 const unsigned long SERIAL_BAUD = 115200;
-const unsigned long I2C_FREQUENCY = 100000;    // 100kHz I2C clock
 const unsigned long SENSOR_READ_INTERVAL = 5000;  // ms between readings
 const unsigned long WIFI_STATUS_INTERVAL = 500;   // ms between WiFi status blinks
 const unsigned long BME680_RETRY_INTERVAL = 5000; // ms between BME680 init retries
@@ -113,7 +112,6 @@ void setup() {
   
   // Initialize I2C with pins verified by continuity testing
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  Wire.setClock(I2C_FREQUENCY);
   
   // Initialize sensors
   setupBME680();

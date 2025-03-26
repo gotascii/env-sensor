@@ -26,7 +26,6 @@ const int BME680_HUMIDITY_OFFSET = 7000; // Humidity offset (7%)
 // Home Assistant configuration
 const char* HA_URL_BASE = HA_URL;
 const char* HA_TOKEN = HA_TOKEN_STR;
-const int STAT_LED = 2;  // Blue LED on the board
 
 // Initialize sensors
 BME680_Class BME680;
@@ -91,10 +90,8 @@ void sendToHomeAssistant(const char* entityId, float value, const char* unit, co
   int httpResponseCode = http.POST(jsonString);
   
   if (httpResponseCode > 0) {
-    digitalWrite(STAT_LED, HIGH);  // Success indication
     Serial.printf("HTTP Response code: %d for %s\n", httpResponseCode, entityId);
   } else {
-    digitalWrite(STAT_LED, LOW);   // Error indication
     Serial.printf("Error code: %d for %s\n", httpResponseCode, entityId);
   }
 
@@ -105,10 +102,6 @@ void setup() {
   // Initialize serial communication
   Serial.begin(SERIAL_BAUD);
   while(!Serial) delay(10);  // Wait for serial to be ready
-  
-  // Configure status LED
-  pinMode(STAT_LED, OUTPUT);
-  digitalWrite(STAT_LED, LOW);
   
   // Initialize I2C with pins verified by continuity testing
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
@@ -123,9 +116,7 @@ void setup() {
   
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   
-  // Flash LED while connecting
   while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(STAT_LED, !digitalRead(STAT_LED));
     delay(WIFI_STATUS_INTERVAL);
     Serial.print(".");
   }

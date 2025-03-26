@@ -7,6 +7,23 @@
 #include "Adafruit_CCS811.h"
 #include "config.h"  // Include configuration header
 
+// Pin Configuration
+const int PIN_I2C_SDA = 15;       // I2C SDA pin
+const int PIN_I2C_SCL = 5;        // I2C SCL pin
+
+// Timing Constants
+const unsigned long SERIAL_BAUD = 115200;
+const unsigned long I2C_FREQUENCY = 100000;    // 100kHz I2C clock
+const unsigned long SENSOR_READ_INTERVAL = 5000;  // ms between readings
+const unsigned long WIFI_STATUS_INTERVAL = 500;   // ms between WiFi status blinks
+const unsigned long BME680_RETRY_INTERVAL = 5000; // ms between BME680 init retries
+
+// BME680 Configuration
+const int BME680_HEATER_TEMP = 320;     // Gas heater temperature in °C
+const int BME680_HEATER_TIME = 150;     // Gas heater time in ms
+const int BME680_TEMP_OFFSET = -300;    // Temperature offset (3°C * -100)
+const int BME680_HUMIDITY_OFFSET = 7000; // Humidity offset (7%)
+
 // Home Assistant configuration
 const char* HA_URL_BASE = HA_URL;
 const char* HA_TOKEN = HA_TOKEN_STR;
@@ -20,7 +37,7 @@ void setupBME680() {
   Serial.print(F("- Initializing BME680 sensor\n"));
   while (!BME680.begin(I2C_STANDARD_MODE)) {  // Start BME680 using I2C, use first device found
     Serial.print(F("-  Unable to find BME680. Trying again in 5 seconds.\n"));
-    delay(5000);
+    delay(BME680_RETRY_INTERVAL);
   }
 
   Serial.print(F("- Setting 16x oversampling for all sensors\n"));
@@ -32,7 +49,7 @@ void setupBME680() {
   BME680.setIIRFilter(IIR4);
 
   Serial.print(F("- Setting gas measurement to 320°C for 150ms\n"));
-  BME680.setGas(320, 150);  // 320°C for 150 milliseconds
+  BME680.setGas(BME680_HEATER_TEMP, BME680_HEATER_TIME);  // 320°C for 150 milliseconds
 }
 
 void setupCCS811() {
@@ -87,7 +104,7 @@ void sendToHomeAssistant(const char* entityId, float value, const char* unit, co
 
 void setup() {
   // Initialize serial communication
-  Serial.begin(115200);
+  Serial.begin(SERIAL_BAUD);
   while(!Serial) delay(10);  // Wait for serial to be ready
   
   // Configure status LED
@@ -95,8 +112,8 @@ void setup() {
   digitalWrite(STAT_LED, LOW);
   
   // Initialize I2C with pins verified by continuity testing
-  Wire.begin(15, 5);  // SDA = GPIO15, SCL = GPIO5
-  Wire.setClock(100000);  // Set to standard 100kHz I2C speed
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  Wire.setClock(I2C_FREQUENCY);
   
   // Initialize sensors
   setupBME680();
@@ -111,7 +128,7 @@ void setup() {
   // Flash LED while connecting
   while (WiFi.status() != WL_CONNECTED) {
     digitalWrite(STAT_LED, !digitalRead(STAT_LED));
-    delay(500);
+    delay(WIFI_STATUS_INTERVAL);
     Serial.print(".");
   }
   
@@ -129,8 +146,8 @@ void loop() {
   // Get readings from BME680
   if (BME680.getSensorData(temp, humidity, pressure, gas)) {
     // Adjust temperature and humidity based on previous calibration
-    temp = temp - 300;      // Subtract 3°C (300 = 3.00°C)
-    humidity = humidity + 7000;  // Add 7% (7000 = 7.000%)
+    temp = temp + BME680_TEMP_OFFSET;      // Subtract 3°C (300 = 3.00°C)
+    humidity = humidity + BME680_HUMIDITY_OFFSET;  // Add 7% (7000 = 7.000%)
     
     // Send BME680 measurements to Home Assistant
     sendToHomeAssistant("temperature", (float)temp / 100.0, "°C", "temperature");
@@ -160,5 +177,5 @@ void loop() {
     Serial.printf("CO2: %d ppm, TVOC: %d ppb\n", eco2, tvoc);
   }
   
-  delay(5000);  // Wait 5 seconds between readings
+  delay(SENSOR_READ_INTERVAL);  // Wait between readings
 } 

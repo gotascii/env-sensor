@@ -3,9 +3,9 @@
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <Wire.h>
-#include "Zanshin_BME680.h"  // Same library as before
+#include "Zanshin_BME680.h"
 #include "Adafruit_CCS811.h"
-#include "config.h"  // Include configuration header
+#include "config.h"
 
 // Pin Configuration
 const int PIN_I2C_SDA = 15;       // I2C SDA pin
@@ -33,7 +33,7 @@ Adafruit_CCS811 ccs;
 
 void setupBME680() {
   Serial.print(F("- Initializing BME680 sensor\n"));
-  while (!BME680.begin(I2C_STANDARD_MODE)) {  // Start BME680 using I2C, use first device found
+  while (!BME680.begin(I2C_STANDARD_MODE)) {
     Serial.print(F("-  Unable to find BME680. Trying again in 5 seconds.\n"));
     delay(BME680_RETRY_INTERVAL);
   }
@@ -47,7 +47,7 @@ void setupBME680() {
   BME680.setIIRFilter(IIR4);
 
   Serial.print(F("- Setting gas measurement to 320°C for 150ms\n"));
-  BME680.setGas(BME680_HEATER_TEMP, BME680_HEATER_TIME);  // 320°C for 150 milliseconds
+  BME680.setGas(BME680_HEATER_TEMP, BME680_HEATER_TIME);
 }
 
 void setupCCS811() {
@@ -65,17 +65,15 @@ void sendToHomeAssistant(const char* entityId, float value, const char* unit, co
   }
 
   WiFiClientSecure client;
-  client.setInsecure();  // For initial testing only - we'll add proper cert verification later
+  client.setInsecure();
   HTTPClient http;
   
   String url = String(HA_URL_BASE) + entityId;
   http.begin(client, url);
   
-  // Add headers
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", String("Bearer ") + HA_TOKEN);
 
-  // Create JSON payload
   StaticJsonDocument<200> doc;
   doc["state"] = value;
   doc["attributes"]["unit_of_measurement"] = unit;
@@ -86,7 +84,6 @@ void sendToHomeAssistant(const char* entityId, float value, const char* unit, co
   String jsonString;
   serializeJson(doc, jsonString);
 
-  // Send POST request
   int httpResponseCode = http.POST(jsonString);
   
   if (httpResponseCode > 0) {
@@ -99,18 +96,14 @@ void sendToHomeAssistant(const char* entityId, float value, const char* unit, co
 }
 
 void setup() {
-  // Initialize serial communication
   Serial.begin(SERIAL_BAUD);
-  while(!Serial) delay(10);  // Wait for serial to be ready
+  while(!Serial) delay(10);
   
-  // Initialize I2C with pins verified by continuity testing
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   
-  // Initialize sensors
   setupBME680();
   setupCCS811();
   
-  // Connect to WiFi
   Serial.print("Connecting to ");
   Serial.println(WIFI_SSID);
   
@@ -128,43 +121,36 @@ void setup() {
 }
 
 void loop() {
-  static int32_t temp, humidity, pressure, gas;  // BME readings
-  static char buf[16];  // For formatting floats
-  static float humi_f, temp_f;  // For CCS811 compensation
+  static int32_t temp, humidity, pressure, gas;
+  static char buf[16];
+  static float humi_f, temp_f;
   
-  // Get readings from BME680
   if (BME680.getSensorData(temp, humidity, pressure, gas)) {
-    // Adjust temperature and humidity based on previous calibration
-    temp = temp + BME680_TEMP_OFFSET;      // Subtract 3°C (300 = 3.00°C)
-    humidity = humidity + BME680_HUMIDITY_OFFSET;  // Add 7% (7000 = 7.000%)
+    temp = temp + BME680_TEMP_OFFSET;
+    humidity = humidity + BME680_HUMIDITY_OFFSET;
     
-    // Send BME680 measurements to Home Assistant
     sendToHomeAssistant("temperature", (float)temp / 100.0, "°C", "temperature");
     sendToHomeAssistant("humidity", (float)humidity / 1000.0, "%", "humidity");
     sendToHomeAssistant("pressure", (float)pressure / 100.0, "hPa", "pressure");
     sendToHomeAssistant("gas", (float)gas / 100.0, "kΩ");
     
-    // Format temperature and humidity for CCS811
     sprintf(buf, "%3d.%02d", (int8_t)(humidity / 1000), (uint16_t)(humidity % 1000));
     humi_f = strtod(buf, NULL);
     sprintf(buf, "%3d.%02d", (int8_t)(temp / 100), (uint8_t)(temp % 100));
     temp_f = strtod(buf, NULL);
     
-    // Set environmental data for CCS811 compensation
     ccs.setEnvironmentalData(humi_f, temp_f);
   }
   
-  // Read CCS811 data
   if (ccs.available() && !ccs.readData()) {
     uint16_t eco2 = ccs.geteCO2();
     uint16_t tvoc = ccs.getTVOC();
     
-    // Send CCS811 measurements to Home Assistant
     sendToHomeAssistant("co2", (float)eco2, "ppm", "carbon_dioxide");
     sendToHomeAssistant("tvoc", (float)tvoc, "ppb");
     
     Serial.printf("CO2: %d ppm, TVOC: %d ppb\n", eco2, tvoc);
   }
   
-  delay(SENSOR_READ_INTERVAL);  // Wait between readings
+  delay(SENSOR_READ_INTERVAL);
 } 

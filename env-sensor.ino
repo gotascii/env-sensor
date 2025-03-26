@@ -13,8 +13,8 @@ const int PIN_I2C_SCL = 5;        // I2C SCL pin
 
 // Timing Constants
 const unsigned long SERIAL_BAUD = 115200;
-const unsigned long SENSOR_READ_INTERVAL = 5000;  // ms between readings
-const unsigned long WIFI_STATUS_INTERVAL = 500;   // ms between WiFi status blinks
+const unsigned long SENSOR_READ_INTERVAL = 10000;  // ms between readings
+const unsigned long WIFI_STATUS_INTERVAL = 500;   // ms between WiFi init status check
 const unsigned long BME680_RETRY_INTERVAL = 5000; // ms between BME680 init retries
 
 // BME680 Configuration

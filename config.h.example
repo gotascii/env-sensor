@@ -1,0 +1,15 @@
+// Environment Sensor Configuration
+// Copy this file to config.h and update with your values
+
+#pragma once
+
+// WiFi Configuration
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASSWORD "your_wifi_password"
+
+// Home Assistant Configuration
+#define HA_URL "http://your.ha.instance:8123"  // Your Home Assistant URL
+#define HA_TOKEN "your_long_lived_access_token"  // Your HA Long-Lived Access Token
+
+// Optional Debug Configuration
+#define DEBUG_SERIAL true  // Set to false to disable serial debugging output 

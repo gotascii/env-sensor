@@ -36,6 +36,14 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
   - Particle counting
   - Connector: 1.25mm pitch to 2.54mm pitch breakout board included
 
+### Power Distribution
+
+- Adafruit Micro-USB breakout board with mounting holes provides main 5V power
+- Power distribution using split connector cables:
+  - 5V & ground split:
+    - PMS5003 breakout board
+    - ESP32
+
 ## Dependencies
 
 - [Zanshin BME680 Library](https://github.com/Zanduino/BME680)

@@ -34,6 +34,7 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
 - PMS5003 particulate matter sensor
   - PM1.0, PM2.5, PM10 measurements
   - Particle counting
+  - Connector: 1.25mm pitch to 2.54mm pitch breakout board included
 
 ## Dependencies
 

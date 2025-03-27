@@ -74,9 +74,28 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
 
 Sensors are exposed as the following entities:
 
-- `sensor.env_temperature` (°C)
-- `sensor.env_humidity` (%)
-- `sensor.env_pressure` (hPa)
+BME680 Environmental Sensor:
+
+- `sensor.env_temperature` (°C, device_class: temperature)
+- `sensor.env_humidity` (%, device_class: humidity)
+- `sensor.env_pressure` (hPa, device_class: pressure)
 - `sensor.env_gas` (kΩ)
-- `sensor.env_co2` (ppm)
+
+CCS811 Air Quality:
+
+- `sensor.env_co2` (ppm, device_class: carbon_dioxide)
 - `sensor.env_tvoc` (ppb)
+
+PMS5003 Particulate Matter:
+
+- `sensor.env_pm1` (µg/m³, device_class: pm1)
+- `sensor.env_pm25` (µg/m³, device_class: pm25)
+- `sensor.env_pm10` (µg/m³, device_class: pm10)
+- `sensor.env_particles_03um` (particles/0.1L)
+- `sensor.env_particles_05um` (particles/0.1L)
+- `sensor.env_particles_10um` (particles/0.1L)
+- `sensor.env_particles_25um` (particles/0.1L)
+- `sensor.env_particles_50um` (particles/0.1L)
+- `sensor.env_particles_100um` (particles/0.1L)
+
+Readings are sent every 30 seconds to Home Assistant.

@@ -4,7 +4,15 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
 
 ## Hardware
 
-- ESP32 development board
+- SparkFun ESP32 Qwiic Pro Mini (DEV-23386)
+  - ESP32-PICO-MINI-02-N8R2 microcontroller
+  - 8MB Flash, 2MB PSRAM
+  - Dual-core processor (80-240MHz)
+  - Built-in WiFi and Bluetooth
+  - Qwiic connector for I2C sensors
+  - [Product Page](https://www.sparkfun.com/products/23386)
+  - [Hookup Guide](https://sparkfun.github.io/SparkFun_ESP32_Qwiic_Pro_Mini/)
+  - [GitHub Repository](https://github.com/sparkfun/SparkFun_ESP32_Qwiic_Pro_Mini)
 - BME680 environmental sensor (via Qwiic)
   - Temperature
   - Humidity
@@ -13,6 +21,9 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
 - CCS811 air quality sensor (via Qwiic)
   - eCO2 (equivalent CO2)
   - TVOC (Total Volatile Organic Compounds)
+- PMS5003 particulate matter sensor
+  - PM1.0, PM2.5, PM10 measurements
+  - Particle counting
 
 ## Dependencies
 

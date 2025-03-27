@@ -68,8 +68,6 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
   - Temperature offset: -3°C
   - Humidity offset: +7%
 
-- Readings are sent every 10 seconds to Home Assistant
-
 ## Home Assistant Integration
 
 Sensors are exposed as the following entities:
@@ -97,5 +95,3 @@ PMS5003 Particulate Matter:
 - `sensor.env_particles_25um` (particles/0.1L)
 - `sensor.env_particles_50um` (particles/0.1L)
 - `sensor.env_particles_100um` (particles/0.1L)
-
-Readings are sent every 30 seconds to Home Assistant.

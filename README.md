@@ -13,14 +13,20 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
   - [Product Page](https://www.sparkfun.com/products/23386)
   - [Hookup Guide](https://sparkfun.github.io/SparkFun_ESP32_Qwiic_Pro_Mini/)
   - [GitHub Repository](https://github.com/sparkfun/SparkFun_ESP32_Qwiic_Pro_Mini)
-- BME680 environmental sensor (via Qwiic)
+- SparkFun BME680 Environmental Sensor (Qwiic)
   - Temperature
   - Humidity
   - Barometric pressure
   - Gas resistance
-- CCS811 air quality sensor (via Qwiic)
+  - [Product Page](https://www.sparkfun.com/products/16466)
+  - [Hookup Guide](https://learn.sparkfun.com/tutorials/sparkfun-environmental-sensor-breakout---bme680-qwiic-hookup-guide)
+  - [GitHub Repository](https://github.com/sparkfun/SparkFun_BME680_Arduino_Library)
+- Adafruit CCS811 Air Quality Sensor (STEMMA QT)
   - eCO2 (equivalent CO2)
   - TVOC (Total Volatile Organic Compounds)
+  - [Product Info (Archived)](https://learn.adafruit.com/adafruit-ccs811-air-quality-sensor)
+  - [Arduino Library](https://github.com/adafruit/Adafruit_CCS811)
+  - Note: This sensor has been discontinued and replaced by the ENS160
 - PMS5003 particulate matter sensor
   - PM1.0, PM2.5, PM10 measurements
   - Particle counting

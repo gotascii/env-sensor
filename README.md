@@ -13,6 +13,10 @@ An ESP32-based environmental monitoring system that measures temperature, humidi
   - [Product Page](https://www.sparkfun.com/products/23386)
   - [Hookup Guide](https://sparkfun.github.io/SparkFun_ESP32_Qwiic_Pro_Mini/)
   - [GitHub Repository](https://github.com/sparkfun/SparkFun_ESP32_Qwiic_Pro_Mini)
+  - Programming Interface:
+    - SparkFun Serial Basic Breakout - CH340C (USB-C)
+    - [Product Page](https://www.sparkfun.com/products/15096)
+    - [Hookup Guide](https://learn.sparkfun.com/tutorials/sparkfun-serial-basic-ch340c-hookup-guide)
 - SparkFun BME680 Environmental Sensor (Qwiic)
   - Temperature
   - Humidity
